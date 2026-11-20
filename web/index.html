@@ -21,7 +21,7 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .readout{font-size:32px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .connection{display:grid;place-items:center;width:32px;height:32px}
 .connection.off:after{content:"";position:absolute;width:27px;border-top:2px solid var(--fg);transform:rotate(-45deg)}
-.matrix{border:2px solid var(--fg);display:grid;place-items:center;padding:12px;width:100%;flex:none;min-height:98px;aspect-ratio:42/10;background:var(--bg)}
+.matrix{border:2px solid var(--fg);display:grid;place-items:center;padding:12px;width:100%;flex:none;min-height:98px;aspect-ratio:42/10;background:#000}
 canvas{display:block;width:100%;height:auto;aspect-ratio:42/9;image-rendering:pixelated}
 .page{flex:1;min-height:0;display:none;flex-direction:column;gap:16px;overflow:hidden}
 .page.on{display:flex}
@@ -34,10 +34,11 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:42/9;image-rendering:pi
 .controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-content:start}
 .controls:empty{display:none}
 .controls button{width:100%}
-.controls input[type=number]{width:100%;height:52px;border:2px solid var(--fg);border-radius:0;background:var(--bg);text-align:center;font-size:32px;min-width:0;-moz-appearance:textfield}
+.controls input[type=number]{width:100%;height:100%;border:0;border-radius:0;background:var(--bg);text-align:center;font-size:32px;min-width:0;-moz-appearance:textfield}
 .controls input::-webkit-inner-spin-button,.controls input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.controls .number{grid-column:span 2;display:flex;align-items:center;gap:8px}
+.controls .number{grid-column:span 2;display:flex;align-items:center;gap:8px;height:52px;padding-right:12px;border:2px solid var(--fg)}
 .controls .number input{flex:1}
+.h{margin:0 0 -8px;font-size:12px;font-weight:600;line-height:1;letter-spacing:.08em;text-transform:uppercase}
 .range{display:flex;align-items:center;gap:16px;min-height:52px}
 .range input{flex:1;min-width:0;accent-color:var(--fg)}
 .style-group{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -58,7 +59,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:42/9;image-rendering:pi
   <div class="matrix"><canvas id="matrix" width="840" height="180" role="img" aria-label="42 by 9 LED matrix"></canvas></div>
   <section class="page page-clock on" id="clockPage" aria-label="Clock"><div class="mode-grid" id="clockModes"></div><div class="settings-spacer"></div></section>
   <section class="page page-apps" id="appsPage" aria-label="Apps"><div class="mode-grid" id="appModes"></div><div class="value-panel" id="valuePanel" hidden><span class="value" id="appValue"></span><span class="unit" id="appUnit"></span></div><div class="controls" id="controls"></div><div class="settings-spacer"></div></section>
-  <section class="page page-settings" id="settingsPage" aria-label="Settings"><div class="style-group" id="fonts"></div><div class="style-group" id="effects"></div><div class="range"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg><input id="brightness" type="range" min="0" max="7" value="7" aria-label="Brightness"><span class="value" id="brightnessValue">7</span></div><div class="settings-spacer"></div><div class="settings-actions"><button id="invert" aria-label="Invert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg></button><button id="preview" aria-label="Preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button><button id="save" aria-label="Save"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1zM7 3v6h10V3M7 21v-8h10v8"/></svg></button><button id="lock" aria-label="Unlock at device" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></button></div></section>
+  <section class="page page-settings" id="settingsPage" aria-label="Settings"><h2 class="h">Font</h2><div class="style-group" id="fonts"></div><h2 class="h">Effect</h2><div class="style-group" id="effects"></div><h2 class="h">Brightness</h2><div class="range"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg><input id="brightness" type="range" min="0" max="7" value="7" aria-label="Brightness"><span class="value" id="brightnessValue">7</span></div><div class="settings-spacer"></div><div class="settings-actions"><button id="invert" aria-label="Invert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg></button><button id="preview" aria-label="Preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button><button id="save" aria-label="Save"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1zM7 3v6h10V3M7 21v-8h10v8"/></svg></button><button id="lock" aria-label="Unlock at device" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></button></div></section>
   <nav class="tabs" aria-label="Navigation"><button class="on" data-tab="clock" aria-label="Clock"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg></button><button data-tab="apps" aria-label="Apps"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button><button data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg></button></nav>
 </div>
 <script>
@@ -76,8 +77,7 @@ let appPage=0;
 function renderAppModes(){const start=appPage*6;let visible=appModes.slice(start,start+6);$('appModes').innerHTML=visible.map(name=>`<button data-mode="${name}" aria-label="${name}">${icon(name)}</button>`).join('')+`<button data-page="-1" aria-label="Previous apps">${icon('left')}</button><button data-page="1" aria-label="Next apps">${icon('right')}</button>`;active()}
 if(appModes.indexOf(state.mode)>=6)appPage=1;renderAppModes();
 const canvas=$('matrix'),ctx=canvas.getContext('2d');
-function paint(){const cs=getComputedStyle(document.documentElement),bg=cs.getPropertyValue('--bg'),fg=cs.getPropertyValue('--fg');ctx.fillStyle=bg;ctx.fillRect(0,0,840,180);for(let y=0;y<9;y++)for(let x=0;x<42;x++){const on=state.bits[y*42+x]==='1';ctx.beginPath();ctx.arc(x*20+10,y*20+10,on?6:5,0,Math.PI*2);if(on){ctx.fillStyle=fg;ctx.fill()}else{ctx.strokeStyle=fg;ctx.lineWidth=2;ctx.stroke()}}}
-matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>paint());
+function paint(){ctx.fillStyle='#000';ctx.fillRect(0,0,840,180);for(let y=0;y<9;y++)for(let x=0;x<42;x++){ctx.fillStyle=state.bits[y*42+x]==='1'?'#ff8c1a':'#2a1705';ctx.fillRect(x*20+1,y*20+1,18,18)}}
 function tab(name){state.tab=name;for(const b of document.querySelectorAll('[data-tab]'))b.classList.toggle('on',b.dataset.tab===name);for(const [n,id] of [['clock','clockPage'],['apps','appsPage'],['settings','settingsPage']])$(id).classList.toggle('on',n===name)}
 function active(){for(const b of document.querySelectorAll('[data-mode]'))b.classList.toggle('on',b.dataset.mode===state.mode);for(const b of document.querySelectorAll('[data-font]'))b.classList.toggle('on',b.dataset.font===state.font);for(const b of document.querySelectorAll('[data-effect]'))b.classList.toggle('on',b.dataset.effect===state.effect);$('invert').classList.toggle('on',state.invert);$('save').disabled=!state.unlocked;$('lock').classList.toggle('on',state.unlocked);$('brightness').value=state.brightness;$('brightnessValue').textContent=state.brightness}
 async function get(path){const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw Error(r.status);return r.json()}

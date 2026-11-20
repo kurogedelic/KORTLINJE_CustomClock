@@ -22,6 +22,8 @@ Select the board in `firmware/KORTLINJE_C3/Board.h` (or build with `-DKORTLINJE_
 
 The XIAO assignment is not yet verified on hardware.
 
+See [docs/MANUAL.md](docs/MANUAL.md) for usage.
+
 ## Install a release binary
 
 Download from Releases and verify with `SHA256SUMS.txt`.
