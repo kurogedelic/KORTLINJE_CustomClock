@@ -1,0 +1,8 @@
+#pragma once
+// Copy to MqttPrivate.h and edit before building. Never commit MqttPrivate.h.
+// Leave MQTT_URI empty to disable MQTT.
+inline constexpr char MQTT_URI[] = "";  // e.g. "wss://mqtt.example.com:443/"
+inline constexpr char MQTT_USERNAME[] = "";
+inline constexpr char MQTT_PASSWORD[] = "";
+inline constexpr char MQTT_CLIENT_ID[] = "kortlinje-c3";
+#define MQTT_TOPIC_PREFIX "kortlinje/changeme"

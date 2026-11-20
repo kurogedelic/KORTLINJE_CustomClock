@@ -1,0 +1,10 @@
+.DS_Store
+**/MqttPrivate.h
+**/wifi.txt
+**/credentials.txt
+*.elf
+*.map
+build/
+work/
+__pycache__/
+dist/
