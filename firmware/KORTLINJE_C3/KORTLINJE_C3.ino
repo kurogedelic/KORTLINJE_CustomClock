@@ -651,7 +651,7 @@ String webSettingsJson() {
   char dateText[6];
   formatClock(clockText);
   formatDate(dateText);
-  String result = "{\"version\":\"1.24\",\"clock\":\"";
+  String result = "{\"version\":\"1.25\",\"clock\":\"";
   result += clockText;
   result += "\",\"date\":\"";
   result += dateText;
@@ -716,7 +716,7 @@ void startWebStatus() {
     char dateText[6];
     formatClock(clockText);
     formatDate(dateText);
-    String result = "{\"version\":\"1.24\",\"clock\":\"";
+    String result = "{\"version\":\"1.25\",\"clock\":\"";
     result += clockText;
     result += "\",\"date\":\"";
     result += dateText;
@@ -1143,14 +1143,14 @@ void startOta() {
     Serial.printf("OTA error=%u\n", unsigned(error));
   });
   ArduinoOTA.begin();
-  MDNS.addServiceTxt("arduino", "tcp", "version", "1.24");
+  MDNS.addServiceTxt("arduino", "tcp", "version", "1.25");
   otaStarted = true;
   Serial.print("OTA ready at ");
   Serial.println(WiFi.localIP());
 }
 
 void printStatus() {
-  Serial.printf("status version=1.24 wifi=%u ota=%u trial=%u ip=%s rssi=%ld mode=%s font=%s effect=%s brightness=%u show=%u time=%u mqtt=%u errors=%lu\n",
+  Serial.printf("status version=1.25 wifi=%u ota=%u trial=%u ip=%s rssi=%ld mode=%s font=%s effect=%s brightness=%u show=%u time=%u mqtt=%u errors=%lu\n",
                 WiFi.status() == WL_CONNECTED, otaStarted,
                 otaTrial,
                 WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "-",
@@ -1247,7 +1247,7 @@ void command(const String &line) {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("KORTLINJE_C3_OTA v1.24");
+  Serial.println("KORTLINJE_C3_OTA v1.25");
   WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
     Serial.printf("Wi-Fi disconnected reason=%u\n",
                   unsigned(info.wifi_sta_disconnected.reason));

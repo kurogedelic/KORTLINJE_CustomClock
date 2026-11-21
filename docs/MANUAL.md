@@ -34,7 +34,7 @@ Two pages, switched with the arrow buttons: countdown, Pomodoro, stopwatch, temp
 - **Effect**: transition between minutes: off, wipe, roll, dissolve.
 - **Brightness**: 0–7.
 - Buttons: invert pixels, preview the selected font/effect, save, and lock state.
-- **Keys**: assign any of the eight physical buttons a display or app mode. `DEFAULT` keeps the existing action for the current app. The last decoded button and ADC voltage appear beneath the assignments. `CALIBRATE` shows the next pressed button's name on the clock; use `EXIT` in the web UI or hold the physical MODE button to leave.
+- **Keys**: use TOP and BACK to assign each of the eight physical buttons a display or app mode. `DEFAULT` keeps the existing action for the current app. The last decoded button and ADC voltage appear beneath the assignments. `CALIBRATE` shows the next pressed button's name on the clock; use `EXIT` in the web UI or hold the physical MODE button to leave.
 - **Weather**: save latitude and longitude for a future forecast integration. This version does not fetch or display forecast data.
 
 ## 3. Unlocking changes
