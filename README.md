@@ -2,7 +2,7 @@
 
 Custom firmware and web UI for the IKEA KORTLINJE clock (42×9 LED matrix, three VK1640 drivers) with an ESP32-C3 replacing the original controller.
 
-Display driver and wiring are based on [kobebeefg/ikea-clock-lab](https://github.com/kobebeefg/ikea-clock-lab).
+The VK1640 wiring and LED routing were checked against [kobebeefg/ikea-clock-lab](https://github.com/kobebeefg/ikea-clock-lab). The display driver in this repository is a separate implementation.
 
 ## Features
 
@@ -46,12 +46,9 @@ Requires Arduino-ESP32 2.0.17, ESP32-C3 4 MB board, USB CDC on boot, and the Ada
 
 ## Credits
 
-- [kobebeefg/ikea-clock-lab](https://github.com/kobebeefg/ikea-clock-lab): `LedMatrix.h` and `BasicDisplay.h` (modified: C3 pin assignment, pixel inversion), VK1640 wiring and D44 modification ([tutorial](https://github.com/kobebeefg/ikea-clock-lab/blob/main/tutorial/README.md))
+- [kobebeefg/ikea-clock-lab](https://github.com/kobebeefg/ikea-clock-lab): reference for the physical VK1640 wiring, LED routing and D44 modification ([tutorial](https://github.com/kobebeefg/ikea-clock-lab/blob/main/tutorial/README.md)). See [hardware notes](docs/HARDWARE.md).
 - Fonts: [Press Start 2P](https://github.com/google/fonts/tree/main/ofl/pressstart2p), [Tiny5 Mono](https://github.com/Gissio/font_Tiny5Mono), [Matrix Sans](https://github.com/FriedOrange/MatrixSans) (SIL OFL 1.1; license files in the sketch folder)
 
 ## License
 
-MIT, see `LICENSE`, except:
-
-- `LedMatrix.h` and `BasicDisplay.h` are derived from kobebeefg/ikea-clock-lab, which has no license. They are not covered by the MIT license; permission from the author is pending.
-- Bundled fonts remain under their own OFL licenses.
+MIT, see `LICENSE`. Bundled fonts remain under their own OFL licenses.

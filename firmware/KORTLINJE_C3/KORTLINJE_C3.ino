@@ -909,7 +909,7 @@ void checkTrialBoot() {
   if (!otaTrial) return;
   const uint32_t elapsed = millis() - otaTrialStarted;
   if (elapsed >= 10000 && WiFi.status() == WL_CONNECTED && otaStarted &&
-      webStarted && mqttConnected) {
+      webStarted && (!MQTT_URI[0] || mqttConnected)) {
     esp_err_t result = esp_ota_mark_app_valid_cancel_rollback();
     if (result == ESP_OK) {
       otaTrial = false;

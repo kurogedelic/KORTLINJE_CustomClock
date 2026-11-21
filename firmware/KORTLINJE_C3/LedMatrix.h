@@ -1,33 +1,56 @@
 #pragma once
-// Derived from https://github.com/kobebeefg/ikea-clock-lab (no license specified). Not covered by this repository's MIT license.
+
 #include <stdint.h>
 #include <string.h>
+
+// The board's LED-to-VK1640 routing. See docs/HARDWARE.md.
 namespace IkeaMatrix {
+constexpr int WIDTH = 42;
+constexpr int HEIGHT = 9;
 inline bool rotate180 = true;
 inline bool invertPixels = false;
-constexpr int WIDTH = 42, HEIGHT = 9;
-struct Address { uint8_t chip, index; };
+
+struct Address { uint8_t chip; uint8_t index; };
 enum Indicator : uint8_t { LEFT_TOP, LEFT_MIDDLE, LEFT_BOTTOM, RIGHT_TOP, RIGHT_BOTTOM };
-constexpr Address INDICATORS[5] = {{1,127},{2,126},{1,126},{0,127},{0,126}};
-inline bool pixelAddress(int x, int y, Address &out) {
-  if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return false;
-  if (rotate180) { x = WIDTH - 1 - x; y = HEIGHT - 1 - y; }
-  int localX = x % 14;
-  out.chip = 2 - x / 14;
-  out.index = localX < 6 ? 125 - 6*y - localX : 71 - 8*y - (localX-6);
+constexpr Address INDICATORS[5] = {
+    {1, 127}, {2, 126}, {1, 126}, {0, 127}, {0, 126}};
+
+inline bool pixelAddress(int x, int y, Address &address) {
+  if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return false;
+  if (rotate180) {
+    x = WIDTH - 1 - x;
+    y = HEIGHT - 1 - y;
+  }
+
+  // The first six and remaining eight columns have different row strides.
+  constexpr uint8_t firstRow[14] = {
+      125, 124, 123, 122, 121, 120, 71, 70, 69, 68, 67, 66, 65, 64};
+  const int column = x % 14;
+  address.chip = uint8_t(2 - x / 14);
+  address.index = uint8_t(firstRow[column] - y * (column < 6 ? 6 : 8));
   return true;
 }
+
 class Frame {
-public:
+ public:
   uint8_t ram[3][16] = {};
+
   void clear() { memset(ram, 0, sizeof(ram)); }
-  void set(Address a, bool on = true) {
-    if (a.chip >= 3 || a.index >= 128) return;
-    uint8_t &v = ram[a.chip][a.index/8];
-    uint8_t bit = uint8_t(1U << (a.index%8));
-    if (on) v |= bit; else v &= uint8_t(~bit);
+
+  void set(Address address, bool on = true) {
+    if (address.chip >= 3 || address.index >= 128) return;
+    const uint8_t mask = uint8_t(1U << (address.index & 7));
+    uint8_t &byte = ram[address.chip][address.index >> 3];
+    byte = on ? uint8_t(byte | mask) : uint8_t(byte & ~mask);
   }
-  void drawPixel(int x, int y, bool on = true) { Address a; if (pixelAddress(x,y,a)) set(a,on); }
-  void setIndicator(Indicator i, bool on = true) { if (uint8_t(i)<5) set(INDICATORS[uint8_t(i)],on); }
+
+  void drawPixel(int x, int y, bool on = true) {
+    Address address;
+    if (pixelAddress(x, y, address)) set(address, on);
+  }
+
+  void setIndicator(Indicator indicator, bool on = true) {
+    if (indicator < 5) set(INDICATORS[indicator], on);
+  }
 };
-}
+}  // namespace IkeaMatrix
