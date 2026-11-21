@@ -6,7 +6,7 @@ The VK1640 wiring and LED routing were checked against [kobebeefg/ikea-clock-lab
 
 ## Features
 
-Time, date, seconds, calendar, patterns, games, Pomodoro, stopwatch, countdown, tempo, manual sky display, local web control (light/dark), optional MQTT over WSS, rollback-aware OTA.
+Time, date, seconds, calendar, patterns, games, Pomodoro, stopwatch, countdown, tempo, button calibration and configurable mode shortcuts, manual sky display, local web control (light/dark), optional MQTT over WSS, rollback-aware OTA. The web UI can store a weather location; forecast retrieval is not implemented yet.
 
 ## Supported boards
 
@@ -22,7 +22,7 @@ Select the board in `firmware/KORTLINJE_C3/Board.h` (or build with `-DKORTLINJE_
 
 The XIAO assignment is not yet verified on hardware.
 
-See [docs/MANUAL.md](docs/MANUAL.md) for usage.
+See [docs/MANUAL.md](docs/MANUAL.md) for usage and [docs/HARDWARE-EXPANSION.md](docs/HARDWARE-EXPANSION.md) for the buzzer and sensor plan.
 
 ## Install a release binary
 

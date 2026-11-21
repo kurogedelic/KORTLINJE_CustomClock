@@ -8,7 +8,7 @@
    - `ota <password>` (12–64 characters; reboot afterwards)
 3. The clock syncs time over NTP (timezone JST) and serves the web UI at `http://kortlinje-c3.local/` or its IP address (shown by `status`).
 
-Other serial commands: `status`, `wifi-scan`, `buttons`, `reboot`, `font <name>`, `effect <name>`, `brightness <0-7>`, `preview`, and mode names (`clock`, `date`, `life`, `snow`, `rain`, `dither`, `snake`, `pong`). `wifi-scan` reports whether the configured SSID is visible, with channel and signal strength, without printing the SSID or password. A disconnect reason is printed while Wi-Fi is failing.
+Other serial commands: `status`, `wifi-scan`, `buttons`, `reboot`, `font <name>`, `effect <name>`, `brightness <0-7>`, `preview`, and mode names (`clock`, `date`, `life`, `snow`, `rain`, `dither`, `snake`, `pong`, `calibrate`). `wifi-scan` reports whether the configured SSID is visible, with channel and signal strength, without printing the SSID or password. A disconnect reason is printed while Wi-Fi is failing.
 
 ## 2. Web UI
 
@@ -24,7 +24,7 @@ Select the display: clock, seconds, date, calendar.
 
 ![Apps tab](img/apps-light.png) ![Apps tab, dark](img/apps-dark.png)
 
-Two icon pages, switched with the arrow buttons: countdown, Pomodoro, stopwatch, tempo, sky, life, snow, rain, dither, snake, pong. Controls for the selected app appear below (start/pause, reset, lap, tap, direction keys). Countdown length is set in seconds (10–5999) with the number field and the play button next to it.
+Two pages, switched with the arrow buttons: countdown, Pomodoro, stopwatch, tempo, sky, life, snow, rain, dither, snake, pong, and button calibration. Controls for the selected app appear below (start/pause, reset, lap, tap, direction keys). Countdown length is set in seconds (10–5999) with the number field and the play button next to it.
 
 ### Settings tab
 
@@ -34,6 +34,8 @@ Two icon pages, switched with the arrow buttons: countdown, Pomodoro, stopwatch,
 - **Effect**: transition between minutes: off, wipe, roll, dissolve.
 - **Brightness**: 0–7.
 - Buttons: invert pixels, preview the selected font/effect, save, and lock state.
+- **Keys**: assign any of the eight physical buttons a display or app mode. `DEFAULT` keeps the existing action for the current app. The last decoded button and ADC voltage appear beneath the assignments. `CALIBRATE` shows the next pressed button's name on the clock; use `EXIT` in the web UI or hold the physical MODE button to leave.
+- **Weather**: save latitude and longitude for a future forecast integration. This version does not fetch or display forecast data.
 
 ## 3. Unlocking changes
 
@@ -45,7 +47,8 @@ The two button ladders report different keys by voltage: rear (`set`, `alarm`, `
 
 - `set`: unlock the web UI
 - `up` / `down`: previous / next font
-- `snooze`, `brightness`, `mode`, `bell`, `alarm`: act on the current app (for example direction keys in snake, tap in tempo, start/pause in Pomodoro). On the clock they change mode and brightness.
+- `snooze`, `brightness`, `mode`, `bell`, `alarm`: act on the current app (for example direction keys in snake, tap in tempo, start/pause in Pomodoro). On the clock they change mode and brightness; `alarm` enters calibration.
+- A saved key assignment changes that key to a global mode shortcut. It takes priority over the app's default action. `set` still unlocks the web UI before its assigned shortcut runs. Holding MODE still returns to the clock.
 
 ## 5. Updating
 
@@ -53,4 +56,4 @@ OTA uses the `ota` password. After an OTA update the new image is confirmed only
 
 ## 6. MQTT (optional)
 
-Set `MQTT_URI`, credentials, and `MQTT_TOPIC_PREFIX` in `MqttPrivate.h` and build from source. Topics under the prefix: `text`, `demo`, `mode`, `font`, `effect`, `preview` (subscribed), `status`, `event` (published).
+Set `MQTT_URI`, credentials, and `MQTT_TOPIC_PREFIX` in `MqttPrivate.h` and build from source. Topics under the prefix: `text`, `mode`, `font`, `effect`, `preview` (subscribed), `status`, `event` (published).

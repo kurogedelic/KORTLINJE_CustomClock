@@ -8,12 +8,13 @@
 #include <esp_crt_bundle.h>
 #include <mqtt_client.h>
 #include <esp_ota_ops.h>
+#include <math.h>
+#include <stdlib.h>
 #include "MqttPrivate.h"
 #include "BasicDisplay.h"
 #include "ClockFaces.h"
 #include "Games.h"
 #include "Apps.h"
-#include "MessageText.h"
 #include "MqttText.h"
 #include "Patterns.h"
 #include "PressStart2PClock.h"
@@ -42,7 +43,6 @@ constexpr uint32_t CLOCK_EFFECT_FRAME_MS = 50;
 constexpr uint32_t BUTTON_PRESSED_MV = 2700;
 constexpr uint32_t BUTTON_RELEASED_MV = 2800;
 constexpr char TOPIC_TEXT[] = MQTT_TOPIC_PREFIX "/text";
-constexpr char TOPIC_DEMO[] = MQTT_TOPIC_PREFIX "/demo";
 constexpr char TOPIC_MODE[] = MQTT_TOPIC_PREFIX "/mode";
 constexpr char TOPIC_FONT[] = MQTT_TOPIC_PREFIX "/font";
 constexpr char TOPIC_EFFECT[] = MQTT_TOPIC_PREFIX "/effect";
@@ -52,16 +52,17 @@ constexpr char TOPIC_EVENT[] = MQTT_TOPIC_PREFIX "/event";
 
 Preferences settings;
 String wifiSsid, wifiPassword, otaPassword, serialLine;
+String weatherLat, weatherLon;
 bool otaStarted = false;
 bool webStarted = false;
 bool otaTrial = false;
 uint32_t otaTrialStarted = 0;
 bool wasConnected = false;
-enum class DisplayMode : uint8_t { Clock, Date, Seconds, Calendar, Life, Snow, Rain, Dither, Snake, Pong, Tempo, Pomodoro, Stopwatch, Countdown, Sky };
+enum class DisplayMode : uint8_t { Clock, Date, Seconds, Calendar, Life, Snow, Rain, Dither, Snake, Pong, Tempo, Pomodoro, Stopwatch, Countdown, Sky, Calibrate };
 DisplayMode mode = DisplayMode::Clock;
 uint32_t lastConnectAttempt = 0;
 IkeaMatrix::Frame frame;
-enum class Stage : uint8_t { Idle, Text, MqttText };
+enum class Stage : uint8_t { Idle, MqttText };
 Stage stage = Stage::Idle;
 int scrollLeft = 0;
 uint8_t backPressSamples = 0, backReleaseSamples = 0;
@@ -72,9 +73,11 @@ uint32_t topPressedAt = 0;
 uint32_t lastBackMv = 0, lastTopMv = 0, backPressedMv = 0, topPressedMv = 0;
 uint32_t backPressCount = 0, topPressCount = 0;
 PhysicalKey activeBackKey = PhysicalKey::None, activeTopKey = PhysicalKey::None;
+char calibrationLabel[6] = "PRESS";
+String buttonModes[9];
 uint32_t webUnlockedUntil = 0;
 String webToken;
-uint32_t lastAnimation = 0, lastLife = 0, lastButtonSample = 0, playCount = 0;
+uint32_t lastAnimation = 0, lastLife = 0, lastButtonSample = 0;
 uint32_t lastSnow = 0;
 uint32_t lastRain = 0, lastDither = 0, lastGame = 0;
 uint32_t lastAppFrame = 0;
@@ -100,7 +103,6 @@ WebServer web(80);
 struct MqttCommand { uint8_t kind; uint16_t length; char text[MqttText::MAX_BYTES + 1]; };
 QueueHandle_t mqttCommands = nullptr;
 void mqttEventAck(const char *event);
-void startShow();
 void setMode(DisplayMode next);
 
 bool timeValid() { return time(nullptr) > 1700000000; }
@@ -219,12 +221,16 @@ const char *modeName() {
     case DisplayMode::Stopwatch: return "stopwatch";
     case DisplayMode::Countdown: return "countdown";
     case DisplayMode::Sky: return "sky";
+    case DisplayMode::Calibrate: return "calibrate";
     default: return "clock";
   }
 }
 
 void drawCurrent() {
-  if (mode == DisplayMode::Life) {
+  if (mode == DisplayMode::Calibrate) {
+    PixelText::draw(frame, calibrationLabel);
+    BasicDisplay::show(frame, brightness);
+  } else if (mode == DisplayMode::Life) {
     Patterns::drawLife(frame);
     BasicDisplay::show(frame, brightness);
   } else if (mode == DisplayMode::Snow) {
@@ -288,7 +294,9 @@ void setMode(DisplayMode next) {
   clockTransitionActive = false;
   clockPreviewActive = false;
   mode = next;
-  if (next == DisplayMode::Life) {
+  if (next == DisplayMode::Calibrate) {
+    memcpy(calibrationLabel, "PRESS", sizeof calibrationLabel);
+  } else if (next == DisplayMode::Life) {
     Patterns::seedLife();
     lifeGeneration = 0;
     lastLife = millis();
@@ -332,23 +340,31 @@ void setMode(DisplayMode next) {
   drawCurrent();
 }
 
-bool selectMode(const char *name) {
-  if (strcmp(name, "clock") == 0) setMode(DisplayMode::Clock);
-  else if (strcmp(name, "date") == 0) setMode(DisplayMode::Date);
-  else if (strcmp(name, "seconds") == 0) setMode(DisplayMode::Seconds);
-  else if (strcmp(name, "calendar") == 0) setMode(DisplayMode::Calendar);
-  else if (strcmp(name, "life") == 0) setMode(DisplayMode::Life);
-  else if (strcmp(name, "snow") == 0) setMode(DisplayMode::Snow);
-  else if (strcmp(name, "rain") == 0) setMode(DisplayMode::Rain);
-  else if (strcmp(name, "dither") == 0) setMode(DisplayMode::Dither);
-  else if (strcmp(name, "snake") == 0) setMode(DisplayMode::Snake);
-  else if (strcmp(name, "pong") == 0) setMode(DisplayMode::Pong);
-  else if (strcmp(name, "tempo") == 0) setMode(DisplayMode::Tempo);
-  else if (strcmp(name, "pomodoro") == 0) setMode(DisplayMode::Pomodoro);
-  else if (strcmp(name, "stopwatch") == 0) setMode(DisplayMode::Stopwatch);
-  else if (strcmp(name, "countdown") == 0) setMode(DisplayMode::Countdown);
-  else if (strcmp(name, "sky") == 0) setMode(DisplayMode::Sky);
+bool parseMode(const char *name, DisplayMode &result) {
+  if (strcmp(name, "clock") == 0) result = DisplayMode::Clock;
+  else if (strcmp(name, "date") == 0) result = DisplayMode::Date;
+  else if (strcmp(name, "seconds") == 0) result = DisplayMode::Seconds;
+  else if (strcmp(name, "calendar") == 0) result = DisplayMode::Calendar;
+  else if (strcmp(name, "life") == 0) result = DisplayMode::Life;
+  else if (strcmp(name, "snow") == 0) result = DisplayMode::Snow;
+  else if (strcmp(name, "rain") == 0) result = DisplayMode::Rain;
+  else if (strcmp(name, "dither") == 0) result = DisplayMode::Dither;
+  else if (strcmp(name, "snake") == 0) result = DisplayMode::Snake;
+  else if (strcmp(name, "pong") == 0) result = DisplayMode::Pong;
+  else if (strcmp(name, "tempo") == 0) result = DisplayMode::Tempo;
+  else if (strcmp(name, "pomodoro") == 0) result = DisplayMode::Pomodoro;
+  else if (strcmp(name, "stopwatch") == 0) result = DisplayMode::Stopwatch;
+  else if (strcmp(name, "countdown") == 0) result = DisplayMode::Countdown;
+  else if (strcmp(name, "sky") == 0) result = DisplayMode::Sky;
+  else if (strcmp(name, "calibrate") == 0) result = DisplayMode::Calibrate;
   else return false;
+  return true;
+}
+
+bool selectMode(const char *name) {
+  DisplayMode selected;
+  if (!parseMode(name, selected)) return false;
+  setMode(selected);
   return true;
 }
 
@@ -417,6 +433,28 @@ const char *keyName(PhysicalKey key) {
   }
 }
 
+const char *calibrationName(PhysicalKey key) {
+  switch (key) {
+    case PhysicalKey::Snooze: return "SNOOZ";
+    case PhysicalKey::Brightness: return "BRITE";
+    case PhysicalKey::Mode: return "MODE";
+    case PhysicalKey::Bell: return "BELL";
+    case PhysicalKey::Up: return "UP";
+    case PhysicalKey::Down: return "DOWN";
+    case PhysicalKey::Set: return "SET";
+    case PhysicalKey::Alarm: return "ALARM";
+    default: return "PRESS";
+  }
+}
+
+PhysicalKey keyFromName(const String &name) {
+  for (uint8_t value = 1; value <= 8; ++value) {
+    PhysicalKey key = PhysicalKey(value);
+    if (name == keyName(key)) return key;
+  }
+  return PhysicalKey::None;
+}
+
 void nextDisplayMode() {
   DisplayMode next = mode == DisplayMode::Clock ? DisplayMode::Date :
                      mode == DisplayMode::Date ? DisplayMode::Life :
@@ -435,9 +473,23 @@ void nextBrightness() {
 }
 
 void buttonAction(PhysicalKey key) {
-  if (key == PhysicalKey::Set) {
-    webUnlockedUntil = millis() + 60000; mqttEventAck("web_unlock"); return;
+  if (key == PhysicalKey::None) return;
+  if (mode == DisplayMode::Calibrate) {
+    snprintf(calibrationLabel, sizeof calibrationLabel, "%s", calibrationName(key));
+    drawCurrent();
+    if (key == PhysicalKey::Set) webUnlockedUntil = millis() + 60000;
+    return;
   }
+  if (key == PhysicalKey::Set) {
+    webUnlockedUntil = millis() + 60000;
+    mqttEventAck("web_unlock");
+  }
+  const String &assigned = buttonModes[uint8_t(key)];
+  if (assigned.length() && selectMode(assigned.c_str())) {
+    mqttEventAck(modeName());
+    return;
+  }
+  if (key == PhysicalKey::Set) return;
   if (key == PhysicalKey::Up) { cycleFont(1); return; }
   if (key == PhysicalKey::Down) { cycleFont(-1); return; }
   if (mode == DisplayMode::Snake) {
@@ -498,7 +550,7 @@ void buttonAction(PhysicalKey key) {
     case PhysicalKey::Up: cycleFont(1); break;
     case PhysicalKey::Down: cycleFont(-1); break;
     case PhysicalKey::Set: break;
-    case PhysicalKey::Alarm: startShow(); break;
+    case PhysicalKey::Alarm: setMode(DisplayMode::Calibrate); break;
     default: break;
   }
 }
@@ -514,7 +566,6 @@ esp_err_t mqttEvent(esp_mqtt_event_handle_t event) {
     case MQTT_EVENT_CONNECTED:
       mqttConnected = true;
       esp_mqtt_client_subscribe(event->client, TOPIC_TEXT, 1);
-      esp_mqtt_client_subscribe(event->client, TOPIC_DEMO, 1);
       esp_mqtt_client_subscribe(event->client, TOPIC_MODE, 1);
       esp_mqtt_client_subscribe(event->client, TOPIC_FONT, 1);
       esp_mqtt_client_subscribe(event->client, TOPIC_EFFECT, 1);
@@ -540,9 +591,6 @@ esp_err_t mqttEvent(esp_mqtt_event_handle_t event) {
         command.length = event->data_len;
         memcpy(command.text, event->data, event->data_len);
         command.text[event->data_len] = '\0';
-      } else if (topicIs(event, TOPIC_DEMO) && event->data_len == 4 &&
-                 memcmp(event->data, "play", 4) == 0) {
-        command.kind = 2;
       } else if (topicIs(event, TOPIC_MODE) && event->data_len > 0 &&
                  event->data_len <= 9) {
         command.kind = 3;
@@ -603,7 +651,7 @@ String webSettingsJson() {
   char dateText[6];
   formatClock(clockText);
   formatDate(dateText);
-  String result = "{\"version\":\"1.23\",\"clock\":\"";
+  String result = "{\"version\":\"1.24\",\"clock\":\"";
   result += clockText;
   result += "\",\"date\":\"";
   result += dateText;
@@ -619,8 +667,30 @@ String webSettingsJson() {
   result += ",\"unlocked\":";
   result += webUnlocked() ? "true" : "false";
   result += ",\"remaining_s\":" + String(webUnlocked() ? (webUnlockedUntil - millis() + 999) / 1000 : 0);
-  result += ",\"token\":\"" + webToken + "\"}";
+  result += ",\"button_map\":{";
+  for (uint8_t value = 1; value <= 8; ++value) {
+    if (value > 1) result += ",";
+    PhysicalKey key = PhysicalKey(value);
+    result += "\"";
+    result += keyName(key);
+    result += "\":\"";
+    result += (buttonModes[value].isEmpty() ? String("default") : buttonModes[value]);
+    result += "\"";
+  }
+  result += "},\"weather_lat\":\"" + weatherLat +
+            "\",\"weather_lon\":\"" + weatherLon +
+            "\",\"token\":\"" + webToken + "\"}";
   return result;
+}
+
+bool parseCoordinate(const String &text, float limit, String &normalised) {
+  if (text.isEmpty() || text.length() > 16) return false;
+  char *end = nullptr;
+  float value = strtof(text.c_str(), &end);
+  if (end == text.c_str() || *end != '\0' || !isfinite(value) ||
+      value < -limit || value > limit) return false;
+  normalised = String(value, 5);
+  return true;
 }
 
 bool permitWebChange() {
@@ -646,12 +716,14 @@ void startWebStatus() {
     char dateText[6];
     formatClock(clockText);
     formatDate(dateText);
-    String result = "{\"version\":\"1.23\",\"clock\":\"";
+    String result = "{\"version\":\"1.24\",\"clock\":\"";
     result += clockText;
     result += "\",\"date\":\"";
     result += dateText;
     result += "\",\"mode\":\"";
     result += modeName();
+    result += "\",\"calibration_label\":\"";
+    result += calibrationLabel;
     result += "\",\"font\":\"";
     result += ClockFaces::name(clockFont);
     result += "\",\"effect\":\"";
@@ -700,7 +772,7 @@ void startWebStatus() {
     result += ",\"sky_condition\":\"";
     result += Apps::Sky::name();
     result += "\"";
-    result += ",\"plays\":" + String(playCount) + "}";
+    result += "}";
     web.sendHeader("Cache-Control", "no-store");
     web.send(200, "application/json", result);
   });
@@ -731,6 +803,40 @@ void startWebStatus() {
   });
   web.on("/api/settings", HTTP_GET, []() {
     web.sendHeader("Cache-Control", "no-store");
+    web.send(200, "application/json", webSettingsJson());
+  });
+  web.on("/api/button-map", HTTP_POST, []() {
+    if (!permitWebChange()) return;
+    PhysicalKey key = keyFromName(web.arg("key"));
+    String target = web.arg("mode");
+    DisplayMode parsed;
+    if (key == PhysicalKey::None ||
+        (target != "default" && !parseMode(target.c_str(), parsed))) {
+      web.send(400, "application/json", "{\"error\":\"Invalid button assignment\"}");
+      return;
+    }
+    const uint8_t index = uint8_t(key);
+    buttonModes[index] = target == "default" ? "" : target;
+    String settingKey = "btn" + String(index);
+    settings.putString(settingKey.c_str(), buttonModes[index]);
+    web.send(200, "application/json", webSettingsJson());
+  });
+  web.on("/api/weather-config", HTTP_POST, []() {
+    if (!permitWebChange()) return;
+    String lat = web.arg("lat"), lon = web.arg("lon");
+    String nextLat, nextLon;
+    if (lat.isEmpty() && lon.isEmpty()) {
+      nextLat = "";
+      nextLon = "";
+    } else if (!parseCoordinate(lat, 90.0f, nextLat) ||
+               !parseCoordinate(lon, 180.0f, nextLon)) {
+      web.send(400, "application/json", "{\"error\":\"Invalid coordinates\"}");
+      return;
+    }
+    weatherLat = nextLat;
+    weatherLon = nextLon;
+    settings.putString("weather_lat", weatherLat);
+    settings.putString("weather_lon", weatherLon);
     web.send(200, "application/json", webSettingsJson());
   });
   web.on("/api/frame", HTTP_GET, []() {
@@ -925,18 +1031,6 @@ void checkTrialBoot() {
   }
 }
 
-void startShow() {
-  clockTransitionActive = false;
-  stage = Stage::Text;
-  scrollLeft = 41;
-  lastAnimation = millis();
-  ++playCount;
-  MessageText::draw(frame, scrollLeft);
-  BasicDisplay::show(frame, brightness);
-  Serial.printf("show started count=%lu\n", static_cast<unsigned long>(playCount));
-  mqttEventAck("demo");
-}
-
 void startMqttText(const char *text, size_t length) {
   if (!MqttText::prepare(text, length)) {
     mqttEventAck("unsupported_text");
@@ -1013,15 +1107,6 @@ void tickShow() {
   if (now - lastAnimation < ANIMATION_MS) return;
   lastAnimation = now;
   switch (stage) {
-    case Stage::Text:
-      if (--scrollLeft < -MessageText::length) {
-        stage = Stage::Idle;
-        drawCurrent();
-        Serial.println("show completed");
-        return;
-      }
-      MessageText::draw(frame, scrollLeft);
-      break;
     case Stage::MqttText:
       if (--scrollLeft < -MqttText::length) {
         stage = Stage::Idle;
@@ -1058,20 +1143,20 @@ void startOta() {
     Serial.printf("OTA error=%u\n", unsigned(error));
   });
   ArduinoOTA.begin();
-  MDNS.addServiceTxt("arduino", "tcp", "version", "1.23");
+  MDNS.addServiceTxt("arduino", "tcp", "version", "1.24");
   otaStarted = true;
   Serial.print("OTA ready at ");
   Serial.println(WiFi.localIP());
 }
 
 void printStatus() {
-  Serial.printf("status version=1.23 wifi=%u ota=%u trial=%u ip=%s rssi=%ld mode=%s font=%s effect=%s brightness=%u show=%u plays=%lu time=%u mqtt=%u errors=%lu\n",
+  Serial.printf("status version=1.24 wifi=%u ota=%u trial=%u ip=%s rssi=%ld mode=%s font=%s effect=%s brightness=%u show=%u time=%u mqtt=%u errors=%lu\n",
                 WiFi.status() == WL_CONNECTED, otaStarted,
                 otaTrial,
                 WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "-",
                 static_cast<long>(WiFi.RSSI()), modeName(),
                 ClockFaces::name(clockFont), ClockFaces::name(clockEffect), brightness, unsigned(stage),
-                static_cast<unsigned long>(playCount), timeValid(), mqttConnected,
+                timeValid(), mqttConnected,
                 static_cast<unsigned long>(mqttErrors));
 }
 
@@ -1156,13 +1241,13 @@ void command(const String &line) {
     Serial.printf("display mode=%s\n", modeName());
     return;
   }
-  Serial.println("commands: wifi, ota, status, buttons, reboot, clock, date, life, snow, rain, dither, snake, pong, font, effect, brightness, preview");
+  Serial.println("commands: wifi, ota, status, buttons, reboot, clock, date, life, snow, rain, dither, snake, pong, calibrate, font, effect, brightness, preview");
 }
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("KORTLINJE_C3_OTA v1.23");
+  Serial.println("KORTLINJE_C3_OTA v1.24");
   WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
     Serial.printf("Wi-Fi disconnected reason=%u\n",
                   unsigned(info.wifi_sta_disconnected.reason));
@@ -1177,6 +1262,16 @@ void setup() {
   wifiSsid = settings.getString("wifi_ssid", "");
   wifiPassword = settings.getString("wifi_pass", "");
   otaPassword = settings.getString("ota_key", "");
+  weatherLat = settings.getString("weather_lat", "");
+  weatherLon = settings.getString("weather_lon", "");
+  for (uint8_t index = 1; index <= 8; ++index) {
+    String settingKey = "btn" + String(index);
+    buttonModes[index] = settings.getString(settingKey.c_str(), "");
+    DisplayMode parsed;
+    if (!buttonModes[index].isEmpty() &&
+        !parseMode(buttonModes[index].c_str(), parsed))
+      buttonModes[index] = "";
+  }
   uint8_t storedFont = settings.getUChar("font", 0);
   uint8_t storedEffect = settings.getUChar("effect", 0);
   uint8_t storedBrightness = settings.getUChar("brightness", 7);
@@ -1193,7 +1288,6 @@ void setup() {
   analogSetPinAttenuation(TOP_BUTTON_PIN, ADC_11db);
   randomSeed(esp_random());
   IkeaMatrix::rotate180 = true;
-  MessageText::build();
   mqttCommands = xQueueCreate(1, sizeof(MqttCommand));
   BasicDisplay::begin();
   if (savedMode == "clock" || savedMode == "date" || savedMode == "seconds" ||
@@ -1201,7 +1295,7 @@ void setup() {
       savedMode == "snow" || savedMode == "rain" || savedMode == "dither")
     selectMode(savedMode.c_str());
   else drawCurrent();
-  Serial.println("display ready; commands: wifi, ota, status, buttons, reboot, clock, date, life, snow, rain, dither, snake, pong, font, effect, brightness, preview");
+  Serial.println("display ready; commands: wifi, ota, status, buttons, reboot, clock, date, life, snow, rain, dither, snake, pong, calibrate, font, effect, brightness, preview");
   connectWifi();
 }
 
@@ -1252,7 +1346,6 @@ void loop() {
   MqttCommand mqttCommand{};
   if (mqttCommands && xQueueReceive(mqttCommands, &mqttCommand, 0) == pdTRUE) {
     if (mqttCommand.kind == 1) startMqttText(mqttCommand.text, mqttCommand.length);
-    else if (mqttCommand.kind == 2) startShow();
     else if (mqttCommand.kind == 3) {
       mqttEventAck(selectMode(mqttCommand.text) ? "mode" : "unsupported_mode");
     }
