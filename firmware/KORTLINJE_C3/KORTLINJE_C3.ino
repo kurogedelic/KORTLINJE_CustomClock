@@ -1082,6 +1082,34 @@ void printButtons() {
                 keyName(activeBackKey), keyName(activeTopKey));
 }
 
+void scanConfiguredWifi() {
+  if (wifiSsid.isEmpty()) {
+    Serial.println("wifi-scan no SSID configured");
+    return;
+  }
+  WiFi.setAutoReconnect(false);
+  WiFi.disconnect(false, false);
+  delay(300);
+  const int count = WiFi.scanNetworks(false, true);
+  if (count < 0) {
+    Serial.printf("wifi-scan failed=%d\n", count);
+    connectWifi();
+    return;
+  }
+  int matches = 0;
+  for (int i = 0; i < count; ++i) {
+    if (WiFi.SSID(i) != wifiSsid) continue;
+    ++matches;
+    Serial.printf("wifi-scan match channel=%d rssi=%ld auth=%d\n",
+                  WiFi.channel(i), static_cast<long>(WiFi.RSSI(i)),
+                  int(WiFi.encryptionType(i)));
+  }
+  Serial.printf("wifi-scan networks=%d matches=%d status=%d\n",
+                count, matches, int(WiFi.status()));
+  WiFi.scanDelete();
+  connectWifi();
+}
+
 void command(const String &line) {
   if (line.startsWith("wifi ")) {
     int divider = line.indexOf('\t', 5);
@@ -1111,6 +1139,7 @@ void command(const String &line) {
     return;
   }
   if (line == "status") { printStatus(); return; }
+  if (line == "wifi-scan") { scanConfiguredWifi(); return; }
   if (line == "buttons") { printButtons(); return; }
   if (line == "reboot") { ESP.restart(); return; }
   if (line.startsWith("font ") && selectFont(line.c_str() + 5)) return;
@@ -1134,6 +1163,10 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("KORTLINJE_C3_OTA v1.23");
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
+    Serial.printf("Wi-Fi disconnected reason=%u\n",
+                  unsigned(info.wifi_sta_disconnected.reason));
+  }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   const esp_partition_t *running = esp_ota_get_running_partition();
   esp_ota_img_states_t otaState;
   otaTrial = running && esp_ota_get_state_partition(running, &otaState) == ESP_OK &&

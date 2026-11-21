@@ -8,7 +8,7 @@
    - `ota <password>` (12–64 characters; reboot afterwards)
 3. The clock syncs time over NTP (timezone JST) and serves the web UI at `http://kortlinje-c3.local/` or its IP address (shown by `status`).
 
-Other serial commands: `status`, `buttons`, `reboot`, `font <name>`, `effect <name>`, `brightness <0-7>`, `preview`, and mode names (`clock`, `date`, `life`, `snow`, `rain`, `dither`, `snake`, `pong`).
+Other serial commands: `status`, `wifi-scan`, `buttons`, `reboot`, `font <name>`, `effect <name>`, `brightness <0-7>`, `preview`, and mode names (`clock`, `date`, `life`, `snow`, `rain`, `dither`, `snake`, `pong`). `wifi-scan` reports whether the configured SSID is visible, with channel and signal strength, without printing the SSID or password. A disconnect reason is printed while Wi-Fi is failing.
 
 ## 2. Web UI
 
